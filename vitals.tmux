@@ -13,6 +13,7 @@ vitals_interpolation=(
   "\#{vitals_cpu}"
   "\#{vitals_mem}"
   "\#{vitals_net}"
+  "\#{vitals_battery}"
   "\#{vitals_claude}"
   "\#{vitals_codex}"
 )
@@ -23,6 +24,7 @@ vitals_commands=(
   "#($CURRENT_DIR/scripts/vitals.sh cpu)"
   "#($CURRENT_DIR/scripts/vitals.sh mem)"
   "#($CURRENT_DIR/scripts/vitals.sh net)"
+  "#($CURRENT_DIR/scripts/vitals.sh battery)"
   "#($CURRENT_DIR/scripts/vitals.sh claude)"
   "#($CURRENT_DIR/scripts/vitals.sh codex)"
 )

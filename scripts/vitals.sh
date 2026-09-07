@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dispatcher: vitals.sh <segment> [<segment> ...]
-# Segments: cpu mem net claude codex system(=cpu mem net) llm(=claude codex) all(=system llm)
+# Segments: cpu mem net battery claude codex system(=cpu mem net battery) llm(=claude codex) all(=system llm)
 # Multiple segments are joined by @vitals_separator. Never errors to stderr in normal operation.
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$CURRENT_DIR/helpers.sh"
@@ -20,6 +20,10 @@ ICON_CPU="$(get_tmux_option "@vitals_icon_cpu" "󰘚")"
 ICON_MEM="$(get_tmux_option "@vitals_icon_mem" "󰍛")"
 ICON_DOWN="$(get_tmux_option "@vitals_icon_down" "󰇚")"
 ICON_UP="$(get_tmux_option "@vitals_icon_up" "󰕒")"
+ICON_BATTERY="$(get_tmux_option "@vitals_icon_battery" "󰁹")"
+ICON_BATTERY_WARN="$(get_tmux_option "@vitals_icon_battery_warn" "󰁽")"
+ICON_BATTERY_CRIT="$(get_tmux_option "@vitals_icon_battery_crit" "󰁺")"
+ICON_BATTERY_CHARGING="$(get_tmux_option "@vitals_icon_battery_charging" "󰂄")"
 ICON_CLAUDE="$(get_tmux_option "@vitals_icon_claude" "✳")"
 ICON_CODEX="$(get_tmux_option "@vitals_icon_codex" "")"
 ICON_RESET="$(get_tmux_option "@vitals_icon_reset" "󰑐")"
@@ -29,6 +33,9 @@ BAR_WIDTH="$(get_tmux_option "@vitals_bar_width" "10")"
 NET_FLOOR="$(get_tmux_option "@vitals_net_floor" "51200")"
 # shellcheck disable=SC2207 # word-splitting is intentional: one glyph per array slot
 SPARK_CHARS=($(get_tmux_option "@vitals_spark_chars" "⣀ ⣀ ⣄ ⣤ ⣦ ⣶ ⣷ ⣿"))
+
+BATTERY_WARN="$(get_tmux_option "@vitals_battery_warn" "40")"
+BATTERY_CRIT="$(get_tmux_option "@vitals_battery_crit" "20")"
 
 LLM_SEPARATOR="$(get_tmux_option "@vitals_llm_separator" " | ")"
 CLAUDE_CACHE="$(get_tmux_option "@vitals_claude_cache" "$HOME/.claude/cache/rate-limits.json")"
@@ -166,6 +173,43 @@ segment_net() {
     "$(fg "$COLOR_FG")" "$ICON_UP" "$(spark "$TMP_DIR/up.spark" "$up" "$umax")" "$(fmt_rate "$up")"
 }
 
+# segment_battery: percent + charging state, cross-platform. Prints nothing when there is
+# no battery (desktop Mac) or the platform is unsupported — no pmset, no BAT* sysfs entry.
+segment_battery() {
+  local pct="" charging=0
+
+  if command_exists pmset; then
+    local out
+    out="$(pmset -g batt 2>/dev/null)"
+    pct="$(grep -o '[0-9]*%' <<<"$out" | head -1 | tr -d %)"
+    [[ -z "$pct" ]] && return
+    grep -q 'AC Power' <<<"$out" && charging=1
+  elif is_linux; then
+    local bat
+    bat="$(ls -d /sys/class/power_supply/BAT* 2>/dev/null | head -1)"
+    [[ -z "$bat" ]] && return
+    pct="$(cat "$bat/capacity" 2>/dev/null | tr -dc '0-9')"
+    [[ -z "$pct" ]] && return
+    local status
+    status="$(cat "$bat/status" 2>/dev/null)"
+    [[ "$status" == "Charging" || "$status" == "Full" ]] && charging=1
+  else
+    return
+  fi
+
+  local icon color
+  if ((charging)); then
+    icon="$ICON_BATTERY_CHARGING" color="$COLOR_OK"
+  elif ((pct <= BATTERY_CRIT)); then
+    icon="$ICON_BATTERY_CRIT" color="$COLOR_CRIT"
+  elif ((pct <= BATTERY_WARN)); then
+    icon="$ICON_BATTERY_WARN" color="$COLOR_WARN"
+  else
+    icon="$ICON_BATTERY" color="$COLOR_OK"
+  fi
+  printf "%s%s %3d%%" "$(fg "$color")" "$icon" "$pct"
+}
+
 # Optional fields come out of jq as "-", never "": bash `read` collapses consecutive
 # tabs, so an empty middle column would shift every column after it.
 #
@@ -261,9 +305,9 @@ segment_codex() {
 
 expand_segment() {
   case "$1" in
-    system) echo "cpu mem net" ;;
+    system) echo "cpu mem net battery" ;;
     llm) echo "claude codex" ;;
-    all) echo "cpu mem net claude codex" ;;
+    all) echo "cpu mem net battery claude codex" ;;
     *) echo "$1" ;;
   esac
 }
@@ -273,6 +317,7 @@ render_segment() {
     cpu) segment_cpu ;;
     mem) segment_mem ;;
     net) segment_net ;;
+    battery) segment_battery ;;
     claude) segment_claude ;;
     codex) segment_codex ;;
     *) : ;; # unknown segment: render nothing rather than error

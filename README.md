@@ -37,11 +37,12 @@ set -g status-right '#{vitals_cpu}  #{vitals_mem}  #{vitals_claude} #{vitals_cod
 | Token | Renders |
 |---|---|
 | `#{vitals}` | Every segment (system + llm) |
-| `#{vitals_system}` | `cpu mem net` |
+| `#{vitals_system}` | `cpu mem net battery` |
 | `#{vitals_llm}` | `claude codex` |
 | `#{vitals_cpu}` | CPU sparkline + percentage |
 | `#{vitals_mem}` | Memory bar + percentage |
 | `#{vitals_net}` | Download/upload sparklines + rate |
+| `#{vitals_battery}` | Battery icon + percentage |
 | `#{vitals_claude}` | Claude Code 5h/7d usage limits |
 | `#{vitals_codex}` | OpenAI Codex usage limits |
 
@@ -70,6 +71,12 @@ All options are read via `tmux show -gqv` and fall back to the defaults below if
 | `@vitals_icon_mem` | `󰍛` | Memory icon |
 | `@vitals_icon_down` | `󰇚` | Download icon |
 | `@vitals_icon_up` | `󰕒` | Upload icon |
+| `@vitals_battery_warn` | `40` | Battery percent at/below which the segment turns warn-colored |
+| `@vitals_battery_crit` | `20` | Battery percent at/below which the segment turns crit-colored |
+| `@vitals_icon_battery` | `󰁹` | Battery icon (normal level) |
+| `@vitals_icon_battery_warn` | `󰁽` | Battery icon (warn level) |
+| `@vitals_icon_battery_crit` | `󰁺` | Battery icon (crit level) |
+| `@vitals_icon_battery_charging` | `󰂄` | Battery icon (charging, always ok-colored) |
 | `@vitals_icon_claude` | `✳` | Claude icon |
 | `@vitals_icon_codex` | `` | Codex icon |
 | `@vitals_icon_reset` | `󰑐` | Reset-countdown icon |
@@ -92,6 +99,9 @@ All options are read via `tmux show -gqv` and fall back to the defaults below if
 - `jq`, for the Claude and Codex segments
 - A [Nerd Font](https://www.nerdfonts.com/), for the default icons
 - macOS or Linux (macOS is the primary target; Linux support is best-effort)
+- The `#{vitals_battery}` segment needs macOS `pmset` or Linux sysfs
+  (`/sys/class/power_supply/BAT*`); it renders nothing on machines with neither (e.g. a desktop
+  Mac).
 
 ## Rate-limit hook
 
