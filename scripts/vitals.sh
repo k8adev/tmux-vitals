@@ -111,7 +111,7 @@ segment_cpu() {
     printf "%s%s tmux-cpu?" "$(fg "$COLOR_DIM")" "$ICON_CPU"
     return
   fi
-  cpu="$("$script" 2>/dev/null | tr -dc '0-9')"
+  cpu="$("$script" 2>/dev/null | cut -d. -f1 | tr -dc '0-9')"
   cpu="${cpu:-0}"
   local color
   color="$(level_color "$cpu" "$WARN" "$CRIT" "$COLOR_OK" "$COLOR_WARN" "$COLOR_CRIT")"
@@ -125,7 +125,7 @@ segment_mem() {
     printf "%s%s tmux-cpu?" "$(fg "$COLOR_DIM")" "$ICON_MEM"
     return
   fi
-  mem="$("$script" 2>/dev/null | tr -dc '0-9')"
+  mem="$("$script" 2>/dev/null | cut -d. -f1 | tr -dc '0-9')"
   mem="${mem:-0}"
   local color
   color="$(level_color "$mem" "$WARN" "$CRIT" "$COLOR_OK" "$COLOR_WARN" "$COLOR_CRIT")"
@@ -188,7 +188,7 @@ segment_battery() {
     local bat
     bat="$(ls -d /sys/class/power_supply/BAT* 2>/dev/null | head -1)"
     [[ -z "$bat" ]] && return
-    pct="$(cat "$bat/capacity" 2>/dev/null | tr -dc '0-9')"
+    pct="$(cat "$bat/capacity" 2>/dev/null | cut -d. -f1 | tr -dc '0-9')"
     [[ -z "$pct" ]] && return
     local status
     status="$(cat "$bat/status" 2>/dev/null)"
